@@ -1,5 +1,5 @@
-MIN_DIGITS      = 32
-MAX_DIGITS      = 37
+MIN_DIGITS      = 2
+MAX_DIGITS      = 16
 PROCESSES       = 6
 
 UPPER_EXP_LIMIT = 10

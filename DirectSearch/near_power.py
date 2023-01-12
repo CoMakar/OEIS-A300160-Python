@@ -1,12 +1,11 @@
 import itertools as ittls
 
-from Config.lookup_tables import known_digits
-
 
 #--------------------------------------------------------------------------------------------------------------------------
 #                                                     GLOBALS
 #--------------------------------------------------------------------------------------------------------------------------
 pow_dict = dict()
+known_digits = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 pow_arr = [None, known_digits]
 max_k = 1
 last_k = max_k
@@ -63,9 +62,17 @@ def exhaust_search_withCache(num: int):
             
         
 def s_func(n: int, print_info: bool = False):
-    sum_values = 0
+    valid_numbers = []
     for k in range(1, n+1):
-        for power in range(max(1, k-2), k+3):      
+        for power in range(max(1, k-2), k+2):  
+            xmin = 2**power * k
+            xmax = 9**power * k
+             
+            if len(str(xmin)) > k:
+                continue
+            if len(str(xmax)) < k:
+                continue
+            
             if print_info:
                 print(f"Processing: len = {k};\t exp = {power}")
 
@@ -81,10 +88,10 @@ def s_func(n: int, print_info: bool = False):
                 if (xsumadd1 == concat):
                     if print_info:
                         print(f"[+1] Found: {xsum+1}")
-                    sum_values += xsum+1
+                    valid_numbers.append(xsum+1)
                 
                 if (xsumsub1 == concat):
                     if print_info:
                         print(f"[-1] Found: {xsum-1}")
-                    sum_values += xsum-1
-    return sum_values
+                    valid_numbers.append(xsum-1)
+    return valid_numbers

@@ -17,12 +17,6 @@ def get_data_sample(num_len: int, exponent: int):
         cowrc       - chains them into the 1dim sequence;
     """  
     
-    if num_len <= 1:
-        raise ValueError(f"{num_len} - num_len cannot be 1, 0 or negative")
-    
-    if exponent <= -1:
-        raise ValueError(f"{exponent} - exponent must be positive or 0")   
-
     cowr = ittls.combinations_with_replacement([d**exponent for d in range(9+1)], num_len)
     
     cowrs = map(sum, cowr)

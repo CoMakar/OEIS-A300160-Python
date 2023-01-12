@@ -42,7 +42,7 @@ def show_details(num: int, more: bool = False, show_table: bool = False):
             
             if sum_value in (num + 1, num - 1):
                 if more:
-                    print("\tNUMBER IS A VALID NEAR PRIME NUMBER")
+                    print("\tNUMBER IS A VALID NEAR POWER NUMBER")
                 valid = True
                 break
             elif exp == tail:

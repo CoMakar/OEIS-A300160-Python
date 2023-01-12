@@ -1,6 +1,7 @@
+from Common.printer import Printer
 from Common.timer import Timer
 from Config import direct_config
-from DirectSearch.near_prime import exhaust_search_withCache
+from DirectSearch.near_power import exhaust_search_withCache
 
 
 #------------------------------------------------
@@ -14,6 +15,7 @@ def main():
     timer.tic()
 
     sum_value = 0
+    valid_numbers = []
     counter = 1
 
     print(f"{'START':-^64}")
@@ -22,6 +24,7 @@ def main():
             isnp = exhaust_search_withCache(i)
             if isnp:
                 sum_value += i
+                valid_numbers.append(i)
                 print(f"> Found [{counter}] {i}")
                 counter += 1
         print(f"{'END':-^64}")
@@ -31,7 +34,8 @@ def main():
         
     elapsed = timer.toc()
 
-
+    printer = Printer(6, 12)
+    printer.printf(valid_numbers)
     print(f"Sum_value = {sum_value}\n"
         f"Time elapsed: {elapsed:.2f} seconds")
     input(">...")

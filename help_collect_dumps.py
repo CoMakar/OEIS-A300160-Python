@@ -1,9 +1,10 @@
 import json
 from os import chdir, getcwd, listdir, path
 
-from Common.debug import get_now, linify, log
+from Common import linify
 from Common.printer import Printer
-from Helpers.near_prime_helper import get_np_exponent
+from Common.str_utils import get_now, log
+from Helpers.near_power_helper import get_np_exponent
 
 
 def main():

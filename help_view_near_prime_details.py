@@ -1,4 +1,4 @@
-from Helpers.near_prime_helper import show_details
+from Helpers.near_power_helper import show_details
 
 
 def ask_for_number():

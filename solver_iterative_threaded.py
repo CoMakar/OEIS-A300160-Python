@@ -21,12 +21,13 @@ except ImportError:
     print(f"{'':-^64}") 
     sleep(1)
 
-from Common.debug import get_now, linify, log
+from Common import linify
 from Common.printer import Printer
+from Common.str_utils import get_now, log
 from Common.timer import Timer
 from Common.validators import is_np_num, is_np_num_exp
 from Config import iterative_config
-from Iterative.near_prime import get_data_sample
+from Iterative.near_power import get_data_sample
 
 
 #--------------------------------------------------------------------------------------------------------------------------

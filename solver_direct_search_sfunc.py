@@ -1,3 +1,5 @@
+import os
+
 from Common.printer import Printer
 from Common.timer import Timer
 from Config import direct_config
@@ -9,6 +11,7 @@ from DirectSearch.near_power import s_func
 #------------------------------------------------
 def main():
     TARGET_DIGITS = direct_config.TARGET_DIGITS
+    WIDTH         = os.get_terminal_size().columns // 2
 
     timer = Timer()
     timer.tic()
@@ -16,13 +19,13 @@ def main():
     valid_numbers = []
     sum_value = 0
 
-    print(f"{'START':-^64}")
+    print(f"#{'START':-^{WIDTH}}#")
     try:
         valid_numbers = s_func(TARGET_DIGITS, True)
         sum_value = sum(valid_numbers)
-        print(f"{'END':-^64}")
+        print(f"#{'END':-^{WIDTH}}#")
     except KeyboardInterrupt:
-        print(f"{'HALTED':-^64}")
+        print(f"#{'HALTED':-^{WIDTH}}#")
 
 
     elapsed = timer.toc()

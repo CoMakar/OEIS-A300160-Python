@@ -1,3 +1,5 @@
+import os
+
 from Common.printer import Printer
 from Common.timer import Timer
 from Config import direct_config
@@ -9,6 +11,7 @@ from DirectSearch.near_power import exhaust_search_withCache
 #------------------------------------------------
 def main():      
     TARGET_DIGITS = direct_config.TARGET_DIGITS
+    WIDTH         = os.get_terminal_size().columns // 2
     max_number = int("9" * TARGET_DIGITS)
 
     timer = Timer()
@@ -18,7 +21,7 @@ def main():
     valid_numbers = []
     counter = 1
 
-    print(f"{'START':-^64}")
+    print(f"#{'START':-^{WIDTH}}#")
     try:
         for i in range(1, max_number):
             isnp = exhaust_search_withCache(i)
@@ -27,9 +30,9 @@ def main():
                 valid_numbers.append(i)
                 print(f"> Found [{counter}] {i}")
                 counter += 1
-        print(f"{'END':-^64}")
+        print(f"#{'END':-^{WIDTH}}#")
     except KeyboardInterrupt:
-        print(f"{'HALTED':-^64}")
+        print(f"#{'HALTED':-^{WIDTH}}#")
 
         
     elapsed = timer.toc()

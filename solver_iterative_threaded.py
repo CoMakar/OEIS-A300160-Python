@@ -1,12 +1,12 @@
 import json
 import signal
-from os import chdir, getcwd, getpid, mkdir, path
+from os import chdir, getcwd, getpid, mkdir, path, get_terminal_size
 from time import sleep
 
 try:
     from loky import get_reusable_executor
 except ImportError:
-    print(f"{'REQUIRED PACKAGES NOT FOUND':-^64}") 
+    print(f"{'REQUIRED PACKAGES NOT FOUND':-^32}") 
     print("Please install `loky`")
     print("> pip install loky")
     input("...")
@@ -15,10 +15,10 @@ except ImportError:
 try:
     import psutil
 except ImportError:
-    print(f"{'RECOMENDATION':-^64}") 
+    print(f"{'RECOMENDATION':-^32}") 
     print("`psutil` is recommended to be installed")
     print("> pip install psutil")
-    print(f"{'':-^64}") 
+    print(f"{'':-^32}") 
     sleep(1)
 
 from Common import linify
@@ -66,12 +66,13 @@ def get_tasks(min_digits: int, max_digits: int,
 #                MAIN
 #------------------------------------------------
 def main():
-    MIN_DIGITS =      iterative_config.MIN_DIGITS
-    MAX_DIGITS =      iterative_config.MAX_DIGITS
-    UEXPL =           iterative_config.UPPER_EXP_LIMIT
-    LEXPL =           iterative_config.LOWER_EXP_LIMIT    
-    NPRC  =           iterative_config.PROCESSES
-    APP =             path.dirname(__file__)
+    MIN_DIGITS      = iterative_config.MIN_DIGITS
+    MAX_DIGITS      = iterative_config.MAX_DIGITS
+    UEXPL           = iterative_config.UPPER_EXP_LIMIT
+    LEXPL           = iterative_config.LOWER_EXP_LIMIT    
+    NPRC            = iterative_config.PROCESSES
+    WIDTH           = get_terminal_size().columns // 2
+    APP             = path.dirname(__file__)
     
     chdir(APP)
     if not path.exists("dumps"):
@@ -90,7 +91,7 @@ def main():
     error_occured = False
     was_interrupted = False
     results = []
-    print(f"{'START':-^128}")    
+    print(f"#{'START':-^{WIDTH}}#")    
     with Timer("MAIN"):
         try:
             futures = [executor.submit(process_task, task) for task in tasks]
@@ -103,7 +104,7 @@ def main():
             log(f"pid_{getpid():<8} __main__ Interrupted! Killing workers...")
             executor.shutdown(False, True)
             sleep(1)
-            print(f"{'INTERRUPTED':-^128}")
+            print(f"#{'INTERRUPTED':-^{WIDTH}}#")
             log("Workers killed; Executor stopped")
             was_interrupted = True
     
@@ -112,11 +113,11 @@ def main():
             log(f"pid_{getpid():<8} Error! Killing workers...")
             executor.shutdown(False, True)
             sleep(1)
-            print(f"{'ERROR':-^128}")
+            print(f"#{'ERROR':-^{WIDTH}}#")
             log(f"Something went wrong! Exception: {e}")
             error_occured = True
             
-        print(f"{'END':-^128}")
+        print(f"#{'END':-^{WIDTH}}#")
 
 
     end_date = get_now()
@@ -138,12 +139,12 @@ def main():
     
         printer = Printer(2, 40) 
         
-        print(f"{'VALID NUMBERS':-^128}")  
+        print(f"#{'VALID NUMBERS':-^{WIDTH}}#")  
         printer.printf(["#", "number"])
         printer.printf(linify(enumerate(valid_numbers, 1)))
         print(f"SUM = {sum_value}")
         
-        print(f"{'EXTRA_VALIDATION':-^128}") 
+        print(f"#{'EXTRA_VALIDATION':-^{WIDTH}}#") 
         printer.printf(["number", "extra validation passed"])
         printer.printf(linify(zip(valid_numbers, extra_validation_results)))
     
@@ -174,9 +175,9 @@ def main():
         with open(f"[{name_part}]_dump.json", 'w') as dump_file:
             dump_file.write(json_dump)
     except Exception as e:
-        print(f"Ops! Not dumped. Error: {e}")
+        log(f"Ops! Not dumped. Error: {e}")
     else:
-        print(f"Dumped to {getcwd()} -> {dump_file.name}")
+        log(f"Dumped to {getcwd()} -> {dump_file.name}")
         
     input(">...")
 

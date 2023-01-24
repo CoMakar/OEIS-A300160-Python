@@ -13,6 +13,7 @@ def main():
     TARGET_DIGITS = direct_config.TARGET_DIGITS
     WIDTH         = os.get_terminal_size().columns // 2
 
+
     timer = Timer()
     timer.tic()
 
@@ -27,14 +28,15 @@ def main():
     except KeyboardInterrupt:
         print(f"#{'HALTED':-^{WIDTH}}#")
 
-
     elapsed = timer.toc()
 
-    printer = Printer(6, 12)
+
+    printer = Printer(1, 1, False)
     printer.printf(valid_numbers)
     print(f"Sum_value = {sum_value}\n"
         f"Time elapsed: {elapsed:.2f} seconds")
-    input(">...")
+     
+    input("> Press Enter to exit...")
 
 
 if __name__ == "__main__":

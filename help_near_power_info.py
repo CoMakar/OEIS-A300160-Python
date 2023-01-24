@@ -37,8 +37,9 @@ def ask_for_number():
         if table not in yn_valid or table == "":
             table = None
             print("[!] [YyNn]")
-    table = True if more == "y" else False
+    table = True if table == "y" else False
     
+    print(num, more, table)
     show_details(num, more, table)
     
     
@@ -48,5 +49,7 @@ if __name__ == '__main__':
         while True:
             ask_for_number()
     except KeyboardInterrupt:
-        print("Interrupted...")
+        ...
+    print()
+    input("> Press Enter to exit...")
     

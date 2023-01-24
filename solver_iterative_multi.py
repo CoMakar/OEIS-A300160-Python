@@ -179,7 +179,7 @@ def main():
     else:
         log(f"Dumped to {getcwd()} -> {dump_file.name}")
         
-    input(">...")
+    input("> Press Enter to exit...")
 
 if __name__ == '__main__':
     main()

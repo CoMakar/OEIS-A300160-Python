@@ -33,7 +33,7 @@ def main():
                             np_numbers = filter(lambda v: is_np_num_exp(v, exponent), nums)
                             valid_numbers.extend(list(np_numbers))
                                 
-            print(f"#{'END':-^64}#")
+            print(f"#{'END':-^{WIDTH}}#")
         
         except Exception as e:
             log(f"Something went wrong! Exception: {e}")
@@ -58,7 +58,7 @@ def main():
     print(f"#{'SUM':-^{WIDTH}}#") 
     print(f"SUM = {sum_value}")
     
-    input(">...")
+    input("> Press Enter to exit...")
     
 
 if __name__ == "__main__":

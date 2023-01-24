@@ -1,6 +1,11 @@
+import os
+
 from Helpers.about_iterative_method import help_me_to_understand
 
+
 def explain():
+    WIDTH = os.get_terminal_size().columns // 2
+    
     print("explanation:")
     print("let k = num_len;")
     print("let n = exponent;")
@@ -17,37 +22,37 @@ def explain():
     
     input("> ...")
     
-    print(f"{'SHORT NUMBERS':-^32}") 
-    print(f"{'LEN:2 | EXP:2':-^32}") 
+    print(f"{'SHORT NUMBERS':-^{WIDTH}}") 
+    print(f"{'LEN:2 | EXP:2':-^{WIDTH}}") 
     help_me_to_understand(2,2)
     
     input("> ...")
     
-    print(f"{'LEN:2 | EXP:3':-^32}") 
+    print(f"{'LEN:2 | EXP:3':-^{WIDTH}}") 
     help_me_to_understand(2,3)
     
     input("> ...")
     
-    print(f"{'LEN:3 | EXP:3':-^32}") 
+    print(f"{'LEN:3 | EXP:3':-^{WIDTH}}") 
     help_me_to_understand(3,3)
     
     input("> ...")
     
-    print(f"{'LONG NUMBERS':-^132}") 
-    print(f"{'LEN:9 | EXP:9':-^32}") 
+    print(f"{'LONG NUMBERS':-^{WIDTH}}") 
+    print(f"{'LEN:9 | EXP:9':-^{WIDTH}}") 
     help_me_to_understand(9,9)
     
     input("> ...")
     
-    print(f"{'LEN:16 | EXP:16':-^32}") 
+    print(f"{'LEN:16 | EXP:16':-^{WIDTH}}") 
     help_me_to_understand(16,16)
     
     input("> ...")
     
-    print(f"{'LEN:16 | EXP:26':-^32}") 
+    print(f"{'LEN:16 | EXP:26':-^{WIDTH}}") 
     help_me_to_understand(16,20)
         
-    input("> ...")
+    input("> Press enter to exit...")
     
 
 if __name__ == '__main__':

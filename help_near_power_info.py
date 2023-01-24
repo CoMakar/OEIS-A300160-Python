@@ -39,7 +39,6 @@ def ask_for_number():
             print("[!] [YyNn]")
     table = True if table == "y" else False
     
-    print(num, more, table)
     show_details(num, more, table)
     
     

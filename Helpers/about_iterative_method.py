@@ -10,7 +10,7 @@ def help_me_to_understand(num_len=2, exponent=2):
     cowrfmc = list(ittls.chain.from_iterable(cowrfm))
     cowrfmcset = set(cowrfmc)
     
-    printer = Printer(10, 16)
+    printer = Printer(4, 16)
     
     print()
     print(f"(cowr)          (amount = {len(cowr)}; 100%)")

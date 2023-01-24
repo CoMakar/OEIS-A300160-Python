@@ -13,8 +13,8 @@ class Printer:
             """
             columns:        number of columns
             width:          width of each column
-            compress:       if element length is greater than width it will be replace with `...`
-            use_separator:  draws | between columns and - between lines
+            compress:       if element length is greater than width it will be replaced with `...`
+            use_separator:  draws separators between lines and columns
             autocomplete:   fills empty cells with filler value
             skip:           skips columns [skip_from, skip_to]
                             automatically disables if number of columns < 4 or skip_from == skip_to

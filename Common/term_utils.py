@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from enum import Enum
 from sys import stdout
 from time import sleep
+from typing import Union
 
 
 #SECTION - Colors
@@ -145,14 +146,14 @@ class Cur:
 
 
 #SECTION - Color/Style function
-def fg(fgcol: FG | FGRGB):
+def fg(fgcol: Union[FG, FGRGB]):
     """
     @returns [FG] color string
     """
     return fgcol.value
 
 
-def bg(bgcol: BG | BGRGB):
+def bg(bgcol: Union[BG, BGRGB]):
     """
     @returns [BG] color string
     """
@@ -162,14 +163,14 @@ def bg(bgcol: BG | BGRGB):
 @dataclass
 class Format:
     """
-    Commonly used witj writef() function
+    Commonly used with writef() function
     """
-    fg: FG | FGRGB      = FG.DEF
-    bg: BG | BGRGB      = BG.DEF
-    style: STYLE | None = None
+    fg: Union[FG, FGRGB]      = FG.DEF
+    bg: Union[BG, BGRGB]      = BG.DEF
+    style: Union[STYLE, None] = None
     
 
-def set_color(fg: FG | FGRGB, bg: BG | BGRGB = BG.DEF):
+def set_color(fg: Union[FG, FGRGB] , bg: Union[BG, BGRGB]  = BG.DEF):
     write(fg.value)
     write(bg.value)
 
@@ -296,9 +297,9 @@ def drawbox(x0: int, y0: int, x1: int, y1: int):
     Returns:
         center: relative coordinates of the center of the box (y, x)
     """
-    corners = "┌┐└┘"
-    hor = "─"
-    ver = "│"
+    corners = "...."
+    hor = "-"
+    ver = "|"
     
     width = x1 - x0
     height = y1 - y0

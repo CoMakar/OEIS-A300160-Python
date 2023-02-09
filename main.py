@@ -2,13 +2,15 @@ import json
 import os
 import subprocess
 import sys
-import typing as types
 from dataclasses import dataclass
 from enum import Enum
 from math import ceil
+from time import sleep
+from typing import List, Union
 
-from Common.dont_interrupt import DontInterrupt
-from Common.term_utils import *
+
+from Common.DontInterrupt import DontInterrupt
+from Common.term import *
 
 
 #--------------------------------------------------------------------------------------------------------------------------
@@ -77,7 +79,7 @@ class Option:
  
 
 class OptionList():
-    def __init__(self, options: types.List[Option]):
+    def __init__(self, options: List[Option]):
         self.entries = options
         self.contexts = {
             o.value: o.context for o in self.entries
@@ -133,7 +135,7 @@ class Command:
         arg_repr = f"{Command._ARG_DELIM} ".join(map(repr, argv)) if argv else ""
         self._repr = f"Command({repr(operation)}, {arg_repr})"
         
-    def parse_command(raw: str, type: int | str | float | bool = str) -> "Command":
+    def parse_command(raw: str, type: Union[int, str, float, bool] = str) -> "Command":
         """
         if invalid type is given, TypeError is raised;
         if argument cannot be treated as given type ValueError is raised.
@@ -376,7 +378,7 @@ class ROptionsList(IRenderable):
         
 
 class REnum(IRenderable):
-    def __init__(self, items: types.List):
+    def __init__(self, items: List):
         self.items = items
           
     def render_enum(self):
@@ -728,7 +730,7 @@ def main():
     try:
         while context is not None:
             context = context.execute()
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, EOFError):
         ...
 
 

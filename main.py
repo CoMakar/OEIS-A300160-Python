@@ -7,10 +7,14 @@ from enum import Enum
 from math import ceil
 from time import sleep
 from typing import List, Union
+from random import choice
 
 
 from Common.DontInterrupt import DontInterrupt
 from Common.term import *
+
+from Animations import loading
+from Animations import bye
 
 
 #--------------------------------------------------------------------------------------------------------------------------
@@ -38,6 +42,7 @@ BlackGreen =        Format(FG.BLACK, BG.GREEN)
 GreenBlinking =     Format(FG.GREEN, style=STYLE.BLNK)
 WhiteItalic =       Format(FG.WHITE, style=STYLE.ITALIC)
 Blue =              Format(FG.BLUE)
+Grey =              Format(FGRGB(80, 80, 80))
 #---------------------------------------------------------------------------
 #!SECTION
 
@@ -240,7 +245,7 @@ class RFolder(IRenderable):
         
         for n, file in enumerate(files):
             writef(f"{n}. ", WhiteItalic)
-            write(f"{file}\n")
+            iwrite(f"{file}\n")
             
     def render(self):
         self.render_folder_ls()
@@ -341,7 +346,7 @@ class RFile(IRenderable):
             
         for n, line in enumerate(lines, 1):
             writef(f"{f'{n}.':<5}", WhiteItalic)
-            write(f"{line}")
+            iwrite(f"{line}")
             
     def render(self):
         self.render_file()
@@ -369,7 +374,7 @@ class ROptionsList(IRenderable):
             Cur.pos_save()
             writef(f" | {option.value:<{label_width}}> ", WhiteBlueBold)
             Cur.right(loffset)
-            write(f": {option.text}")
+            iwrite(f": {option.text}")
             Cur.pos_restore()
             Cur.down()
 
@@ -385,7 +390,7 @@ class REnum(IRenderable):
         items = self.items
         for i, item in enumerate(items):
             writef(f" {i} ", WhiteBlueBold)
-            write(f": {item}\n")
+            iwrite(f": {item}\n")
       
     def render(self):
         self.render_enum()
@@ -526,7 +531,7 @@ class DumpFile(IContext):
         self.file.render()
         Cur.lf(3)
         
-        write("Press enter to continue...")
+        iwrite("Press enter to continue...")
         
         self.input_field.render()
         self.input_field.read()
@@ -554,7 +559,7 @@ class DumpsList(IContext):
         self.folder.render()
         Cur.lf()
     
-        write("Usage: b -> back  |  v@n -> view file[n]")
+        iwrite("Usage: b -> back  |  v@n -> view file[n]")
         
         if self.warning.msg:
             self.warning.render()
@@ -629,7 +634,36 @@ class Help(OptionsContext):
 #ANCHOR - Exit 
 class Exit(IContext):
     def execute(self):
+        Scr.clear_os()
+        bye_anim = Animation(bye.anim_data, 2000, 1)
+        bye_anim.set_pos(Scr.midx() - bye_anim.get_width() // 2, 0)
+        bye_anim.play().join()
         exit(1)   
+        
+
+#ANCHOR - Loading
+class Loading(IContext):
+    def execute(self):
+        loading_anim = Animation(loading.anim_data, 100, 13)
+        tips = [
+            ("You can use PyPy to speed up the calculations; "
+             "even for multiprocessing it should be fully functional"),
+            "It all started as a hopeless attempt",
+            "To be honest, this loading screen was made just for fun. It has no sense",
+            "Trizen is a great man!"
+            ":>",
+            "I hope anybody will see these messages"
+        ]
+        Cur.to(Scr.maxy() - 1, 0)
+        writef(f"> {choice(tips)}", Grey)
+        
+        loading_anim.set_pos(Scr.midx()-1, Scr.midy()-1)
+        with DontInterrupt():
+            loading_anim.play().join()
+        
+        return Main()
+        
+
     
     
 #ANCHOR - Runs help_collect_dumps.py
@@ -726,7 +760,7 @@ def main():
     Scr.clear_os()   
     Cur.hide()    
     
-    context = Main()
+    context = Loading()
     try:
         while context is not None:
             context = context.execute()

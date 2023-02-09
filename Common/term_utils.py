@@ -1,10 +1,10 @@
 import os
-import typing as types
+from typing import Union, List, Iterable, Tuple
 from dataclasses import dataclass
 from enum import Enum
 from sys import stdout
 from time import sleep
-from typing import Union
+from threading import Thread, Lock
 
 
 #SECTION - Colors
@@ -80,20 +80,26 @@ class Scr:
         os.system('cls' if os.name == 'nt' else 'clear')
     
     def clear():
-        write("\u001b[2J\u001b[0;0H")
+        iwrite("\u001b[2J\u001b[0;0H")
 
     def clear_line():
-        write("\u001b[2K")
+        iwrite("\u001b[2K")
 
     def reset_mode():
         # resets all active styles and colors
-        write("\u001b[0m")
+        iwrite("\u001b[0m")
         
-    def maxx():
+    def maxx() -> int:
         return os.get_terminal_size().columns
     
-    def maxy():
+    def maxy() -> int:
         return os.get_terminal_size().lines
+    
+    def midx() -> int:
+        return os.get_terminal_size().columns // 2
+    
+    def midy() -> int:
+        return os.get_terminal_size().lines // 2
 #---------------------------------------------------------------------------
 #!SECTION
 
@@ -101,46 +107,188 @@ class Scr:
 #SECTION - Cursor
 class Cur:
     def up(n: int = 1):
-        write(f"\u001b[{n}A")
+        iwrite(f"\u001b[{n}A")
 
     def down(n: int = 1):
-        write(f"\u001b[{n}B")
+        iwrite(f"\u001b[{n}B")
 
     def left(n: int = 1):
-        write(f"\u001b[{n}D")
+        iwrite(f"\u001b[{n}D")
 
     def right(n: int = 1):
-        write(f"\u001b[{n}C")
+        iwrite(f"\u001b[{n}C")
 
     def prev_line(n: int = 1):
-        write(f"\u001b[{n}F")
+        iwrite(f"\u001b[{n}F")
 
     def next_line(n: int = 1):
-        write(f"\u001b[{n}E")
+        iwrite(f"\u001b[{n}E")
 
     def to(line: int, col: int):
-        write(f"\u001b[{line};{col}H")
+        iwrite(f"\u001b[{line};{col}H")
         
     def to_col(col: int):
-        write(f"\u001b[{col}G")
+        iwrite(f"\u001b[{col}G")
 
     def home():
-        write("\u001b[H")
+        iwrite("\u001b[H")
 
     def hide():
-        write("\u001b[?25l")
+        iwrite("\u001b[?25l")
 
     def show():
-        write("\u001b[?25h")
+        iwrite("\u001b[?25h")
 
     def pos_save():
-        write("\u001b[s")
+        """
+        WARNING: don't rely on this function while saving/loading postion for non atomic operations
+                 (especially for multiple threads)
+                 for long term storage use list/tuple etc. and Cur.to()
+        """
+        iwrite("\u001b[s")
 
     def pos_restore():
-        write("\u001b[u")
+        """
+        WARNING: don't rely on this function while saving/loading postion for non atomic operations
+                 (especially for multiple threads)
+                 for long term storage use list/tuple/etc. and Cur.to()
+        """
+        iwrite("\u001b[u")
         
     def lf(n: int = 1):
-        write("\n" * n)
+        iwrite("\n" * n)
+#---------------------------------------------------------------------------
+#!SECTION
+
+
+#---------------------------------------------------------------------------
+#SECTION - Animation
+class Animation:
+    def __init__(self, frames: List[List[str]], frame_duration_ms: int, repeat: int):
+        """
+        Simple ascii graphics animation
+        Args:
+            @param: frames (List[List[str]]): List of animation frames. Each frame is a list of strings.
+            see Example below,
+            
+            frame_duration_ms (int): duration of each frame in milliseconds.
+            repeat (int): how many times animation should be played
+            default position is set to (0, 0)
+                use set_pos(x, y) to change it
+        """
+        
+        """
+            Example:
+            frames = [[         [               [                                        
+                ["   "],        ["   "],        [" o "],                                                                
+                [" o "],   ->   ["   "],   ->   ["   "],                                               
+                ["   "]         [" o "],        ["   "],                                           
+                      ],              ],              ]]                                        
+        """
+        
+        width_values  = []
+        height_values = []
+        # all possible values for width and height
+        
+        if not isinstance(frames, list):
+            raise TypeError("Frames must be a List[List[str]]")
+
+        for frame in frames:
+            if not isinstance(frame, list):
+                raise TypeError("Frames must be a List[List[str]]")
+        
+        for frame in frames:
+            for row in frame:
+                if not isinstance(row, str):
+                    raise TypeError("Frames must be a List[List[str]]") 
+                
+        if frame_duration_ms <= 0:
+            raise ValueError("Frame duration cannot be 0 or smaller")
+        
+        if repeat <= 0:
+            raise ValueError("Animtation must be played at least once")
+
+        for frame in frames:
+            height_values.append(len(frame))
+            for row in frame:
+                width_values.append(len(row))
+
+        is_width_fixed  = len(set(width_values))  == 1
+        is_height_fixed = len(set(height_values)) == 1
+        
+        if not is_width_fixed or not is_height_fixed:
+            raise ValueError("All of the frames must be of the same fixed size")
+        
+        self._frames       = frames
+        self._repeat       = repeat
+        self._duration     = frame_duration_ms
+        self._pos          = (0, 0)
+        self._sizes        = (width_values[0], height_values[0])
+        self._clean_frame  = [" "*width_values[0] for _ in range(height_values[0])]
+        self._lock = Lock()
+        
+    def set_pos(self, x: int, y: int):
+        if x < 0 or y < 0:
+            raise ValueError("Invalid position")
+        self._pos = (x, y)
+        
+    def get_pos(self) -> Tuple[int, int]:
+        """
+        Returns: 
+            (x, y)
+        """
+        return self._pos
+    
+    def get_height(self) -> int:
+        return self._sizes[1]
+
+    def get_width(self) -> int:
+        return self._sizes[0]
+    
+    def set_duration(self, ms: int):
+        if ms <= 0:
+            raise ValueError("Invalid duration")
+        self._duration = ms
+        
+    def set_repeat(self, n: int):
+        if n <= 0:
+            raise ValueError("Animation must be played at least once")
+        self._repeat = n
+
+    def _draw_frame(self, frame: List[str], x: int, y: int):
+        with self._lock:
+            Cur.to(y, x)
+            for row in frame:
+                Cur.pos_save()
+                stdout.write(row)
+                Cur.pos_restore()
+                Cur.down()
+            stdout.flush()
+
+    def __play(self, pos: tuple, duration: int, repeat: int, clear: bool):
+        x, y = pos
+        for t in range(repeat):
+            for frame in self._frames:
+                self._draw_frame(frame, x, y)
+                sleep(duration/1000)
+        if clear:
+            self._draw_frame(self._clean_frame, x, y)
+
+
+    def play(self, clear_after: bool = True) -> Thread:
+        """
+        Create a new thread to play animation, start it and return renderer thread;
+        to wait for the animation to finish, call <animation_thread>.join()
+
+        Args:
+            clear_after (bool, optional): erase last rendered frame or not. Defaults to True.
+
+        Returns:
+            Thread: renderer thread
+        """
+        animation_thread = Thread(target=self.__play, args=(self._pos, self._duration, self._repeat, clear_after))
+        animation_thread.start()
+        return animation_thread
 #---------------------------------------------------------------------------
 #!SECTION
 
@@ -171,12 +319,12 @@ class Format:
     
 
 def set_color(fg: Union[FG, FGRGB] , bg: Union[BG, BGRGB]  = BG.DEF):
-    write(fg.value)
-    write(bg.value)
+    iwrite(fg.value)
+    iwrite(bg.value)
 
 
 def set_style(style: STYLE = STYLE.RESET):
-    write(style.value)
+    iwrite(style.value)
 
 
 def set_format(format: Format):
@@ -189,36 +337,46 @@ def set_format(format: Format):
 
 
 #SECTION - Write functions
-def write(text: any = "\n"):
+def iwrite(text: any = "\n"):
     """
     write with immediate flush
     """
     text = str(text)
     stdout.write(text)
     stdout.flush()
-
+ 
+    
+def write(text: any = "\n"):
+    """
+    Write without flush (this function just a sugar)
+    """
+    text = str(text)
+    stdout.write(text)
+    
 
 def writef(text: any, format: Format):
     """
-    foramted write; automatically resets all styles and colors after writing
+    Write formated text; automatically resets all styles and colors after writing
+    (Formatted means not a Python f-string but a formatted terminal)
     """
     set_format(format)
     write(text)
     Scr.reset_mode()
     
 
-def writew(text: types.Iterable = "\n", wait: float = 0.5, sep: str = ""):
+def writew(text: Iterable = "\n", wait: float = 0.5, sep: str = ""):
     """
-    write with sleep between chars
+    Write text and sleep between printing chars
     """
     for char in text:
-        write(f"{char}{sep}")
+        iwrite(f"{char}{sep}")
         sleep(wait)
         
 
 def writebox(text: str, x0: int, y0: int, x1: int, y1: int):
     """
-    Writes text in a bounding box; overflow is HIDDEN
+    Write text inside bounding box; overflow is HIDDEN
+    
     Args:
         text (str): text to be printed
         x0 (int): top left corner x
@@ -331,7 +489,7 @@ def drawbox(x0: int, y0: int, x1: int, y1: int):
 
 def textbox(text: str, x0: int, y0: int, x1: int, y1: int):
     """
-    writes text in a bounding box, draws box around it
+    write text inside bounding box, draw box around it
     """
     drawbox(x0, y0, x1, y1)
     writebox(text, x0+1, y0+1, x1-1, y1-1)

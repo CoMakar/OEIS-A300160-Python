@@ -1,4 +1,4 @@
-from Common.printer import Printer
+from Common.Printer import Printer
 from Common.validators import is_np_num, is_np_num_exp
 
 

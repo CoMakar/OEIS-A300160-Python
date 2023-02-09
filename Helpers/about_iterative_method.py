@@ -1,5 +1,5 @@
 import itertools as ittls
-from Common.printer import Printer
+from Common.Printer import Printer
            
 
 def help_me_to_understand(num_len=2, exponent=2):

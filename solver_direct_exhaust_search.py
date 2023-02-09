@@ -1,7 +1,7 @@
 import os
 
-from Common.printer import Printer
-from Common.timer import Timer
+from Common.Printer import Printer
+from Common.Timer import Timer
 from Config import direct_config
 from DirectSearch.near_power import exhaust_search_withCache
 

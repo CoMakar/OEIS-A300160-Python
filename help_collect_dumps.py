@@ -2,7 +2,7 @@ import json
 from os import chdir, getcwd, listdir, path
 
 from Common import linify
-from Common.printer import Printer
+from Common.Printer import Printer
 from Common.str_utils import get_now, log
 from Helpers.near_power_helper import get_np_exponent
 

@@ -1,9 +1,9 @@
 import os
 
 from Common import linify
-from Common.printer import Printer
+from Common.Printer import Printer
 from Common.str_utils import log
-from Common.timer import Timer
+from Common.Timer import Timer
 from Common.validators import is_np_num_exp
 from Config import iterative_config
 from Iterative.near_power import get_data_sample
@@ -18,6 +18,7 @@ def main():
     UPPER_EXP_LIMIT = iterative_config.UPPER_EXP_LIMIT
     LOWER_EXP_LIMIT = iterative_config.LOWER_EXP_LIMIT
     WIDTH           = os.get_terminal_size().columns // 2
+
 
     valid_numbers = []
     with Timer("MAIN"):
@@ -50,12 +51,12 @@ def main():
     print()
     
     
-    print(f"#{'VALID NUMBERS':-^{WIDTH}}#")   
     printer = Printer(2, 40)
+    
+    print(f"#{'VALID NUMBERS':-^{WIDTH}}#")   
     printer.printf(["#"])
     printer.printf(linify(enumerate(valid_numbers, 1)))
         
-    print(f"#{'SUM':-^{WIDTH}}#") 
     print(f"SUM = {sum_value}")
     
     input("> Press Enter to exit...")

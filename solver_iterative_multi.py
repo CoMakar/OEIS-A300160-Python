@@ -22,9 +22,9 @@ except ImportError:
     sleep(1)
 
 from Common import linify
-from Common.printer import Printer
+from Common.Printer import Printer
 from Common.str_utils import get_now, log
-from Common.timer import Timer
+from Common.Timer import Timer
 from Common.validators import is_np_num, is_np_num_exp
 from Config import iterative_config
 from Iterative.near_power import get_data_sample
@@ -73,6 +73,7 @@ def main():
     NPRC            = iterative_config.PROCESSES
     WIDTH           = get_terminal_size().columns // 2
     APP             = path.dirname(__file__)
+    
     
     chdir(APP)
     if not path.exists("dumps"):
@@ -142,11 +143,13 @@ def main():
         print(f"#{'VALID NUMBERS':-^{WIDTH}}#")  
         printer.printf(["#", "number"])
         printer.printf(linify(enumerate(valid_numbers, 1)))
+        
         print(f"SUM = {sum_value}")
         
         print(f"#{'EXTRA_VALIDATION':-^{WIDTH}}#") 
         printer.printf(["number", "extra validation passed"])
         printer.printf(linify(zip(valid_numbers, extra_validation_results)))
+    
     
     dump = {"config": {
         "min digits":                   MIN_DIGITS,
@@ -168,6 +171,7 @@ def main():
     }   
     json_dump = json.dumps(dump, indent=4)
     
+    
     try:
         name_part = f"F{MIN_DIGITS}_T{MAX_DIGITS}___U{UEXPL}_L{LEXPL}"
         name_part += "_I" if was_interrupted else ""
@@ -180,6 +184,7 @@ def main():
         log(f"Dumped to {getcwd()} -> {dump_file.name}")
         
     input("> Press Enter to exit...")
+
 
 if __name__ == '__main__':
     main()

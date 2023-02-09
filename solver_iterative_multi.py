@@ -173,10 +173,10 @@ def main():
     
     
     try:
-        name_part = f"F{MIN_DIGITS}_T{MAX_DIGITS}___U{UEXPL}_L{LEXPL}"
+        name_part = f"[F{MIN_DIGITS}_T{MAX_DIGITS}] [U{UEXPL}_L{LEXPL}]"
         name_part += "_I" if was_interrupted else ""
         name_part += "_E" if error_occured else ""
-        with open(f"[{name_part}]_dump.json", 'w') as dump_file:
+        with open(f"{name_part}_dump.json", 'w') as dump_file:
             dump_file.write(json_dump)
     except Exception as e:
         log(f"Ops! Not dumped. Error: {e}")

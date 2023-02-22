@@ -29,7 +29,7 @@ def main():
                 collected_numbers_information = dump_file.read()
                 try:
                     json_dump = json.loads(collected_numbers_information) 
-                    numbers = json_dump.get("numbers", None)
+                    numbers = json_dump["numbers info"].get("numbers", None)
                     if numbers is not None and len(numbers) != 0:
                         log(f"{dump_file.name:<32} [{len(numbers)}] numbers collected")
                         valid_numbers.extend(numbers)

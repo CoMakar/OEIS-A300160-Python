@@ -571,7 +571,7 @@ def main():
         "time info": {
             "start date":                       start_date_string,
             "end date":                         end_date_string,
-            "elapsed (Hours:Minutes:Seconds)":  get_hms(elapsed),
+            "elapsed":                          get_hms(elapsed),
             "details":                          time_consumptions
         },
         "numbers info": {

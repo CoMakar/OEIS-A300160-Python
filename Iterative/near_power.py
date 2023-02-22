@@ -1,4 +1,5 @@
 import itertools as ittls
+from Config.lookup_tables import pow_lookup
 
 
 #--------------------------------------------------------------------------------------------------------------------------
@@ -14,10 +15,13 @@ def get_data_sample(num_len: int, exponent: int):
         cowrs       - sums combinations into integers;
         cowrf       - filters out integers whose length corresponds to the k-length;
         cowrn       - generates neighboring values;
-        cowrc       - chains them into the 1dim sequence;
-    """  
+       !cowrc       - chains them into the 1dim sequence; - DEPRECATED
+        
+    Generates:
+        List[Tuple[int, int]]: pairs of integers that can be near power numbers
+    """
     
-    cowr = ittls.combinations_with_replacement([d**exponent for d in range(9+1)], num_len)
+    cowr = ittls.combinations_with_replacement(pow_lookup[exponent], num_len)
     
     cowrs = map(sum, cowr)
 
@@ -25,7 +29,16 @@ def get_data_sample(num_len: int, exponent: int):
 
     cowrn = map(lambda l: (l-1, l+1), cowrf)
     
-    cowrc = ittls.chain.from_iterable(cowrn)
+    #? chaining seems redundant and has been removed
+    #? so now returns
+    #? ((n-1, n+1), (m-1, m+1), ...)
+    #? instead of
+    #? (n-1, n+1, m-1, m+1, ....)
+    #?
+    #? for single threaded calculations it improves performance by 0.8-1%
+    #? for multithreaded calculations no performance impact was noticed
     
-    return cowrc
+    # cowrc = ittls.chain.from_iterable(cowrn)
+    
+    return cowrn
     

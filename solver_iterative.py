@@ -23,16 +23,26 @@ def main():
     valid_numbers = []
     with Timer("MAIN"):
         try: 
+            
             for digits in range(MIN_DIGITS, MAX_DIGITS + 1):
                 print(f"#{'NLEN_'+str(digits):-^{WIDTH}}#")
                 with Timer(f"nlen_{digits}"):  
+                    
                     for exponent in range(digits-LOWER_EXP_LIMIT, digits+UPPER_EXP_LIMIT+1):
                         with Timer(f"exp_{exponent}"):
+                            log(f"Processing: len={digits:<4} exp={exponent:<4}")
                             
-                            log(f"Processing: len={digits:<8} exp={exponent:<8}")
-                            nums = get_data_sample(digits, exponent)
-                            np_numbers = filter(lambda v: is_np_num_exp(v, exponent), nums)
-                            valid_numbers.extend(list(np_numbers))
+                            num_pairs = get_data_sample(digits, exponent)
+                            for pair in num_pairs:
+                                
+                                # it looks messy and not pythonic
+                                # but it works little faster (about 0.8-1% for single thread)
+                                # :see Iterative.near_power.get_data_sample
+                                if is_np_num_exp(pair[0], exponent):
+                                    valid_numbers.append(pair[0])
+                                    
+                                if is_np_num_exp(pair[1], exponent):
+                                    valid_numbers.append(pair[1])
                                 
             print(f"#{'END':-^{WIDTH}}#")
         
@@ -51,7 +61,7 @@ def main():
     print()
     
     
-    printer = Printer(2, 40)
+    printer = Printer(2, WIDTH // 2)
     
     print(f"#{'VALID NUMBERS':-^{WIDTH}}#")   
     printer.printf(["#"])

@@ -1,14 +1,32 @@
 from Config.lookup_tables import pow_lookup
+from typing import Iterable, List
 
 
-def is_np_num_exp(num: int, exp: int):
+def is_np_num_exp(num: int, exp: int) -> bool:
+    """checks if the given pair(number, exponent) results a near power number
+    
+    Args:
+        num (int): number to check
+        exp (int): target exponent
+
+    Returns:
+        bool: is given number a near power number?
+    """
     digits = map(int, [*str(num)])
     digits_sum = sum([pow_lookup[exp][i] for i in digits])
     
     return digits_sum in (num - 1, num + 1)
 
 
-def is_np_num(num: int):
+def is_np_num(num: int) -> bool:
+    """checks if the given number is a near power number
+
+    Args:
+        num (int): nubmer to check
+
+    Returns:
+        bool: is given number a near power number?
+    """
     exp = 0
     tail = -1
     body = -1

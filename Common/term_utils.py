@@ -265,7 +265,7 @@ class Animation:
                 Cur.down()
             stdout.flush()
 
-    def __play(self, pos: tuple, duration: int, repeat: int, clear: bool):
+    def _play(self, pos: tuple, duration: int, repeat: int, clear: bool):
         x, y = pos
         for t in range(repeat):
             for frame in self._frames:
@@ -286,7 +286,7 @@ class Animation:
         Returns:
             Thread: renderer thread
         """
-        animation_thread = Thread(target=self.__play, args=(self._pos, self._duration, self._repeat, clear_after))
+        animation_thread = Thread(target=self._play, args=(self._pos, self._duration, self._repeat, clear_after))
         animation_thread.start()
         return animation_thread
 #---------------------------------------------------------------------------

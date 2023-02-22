@@ -18,7 +18,7 @@ def ask_for_number():
         
         if num <= 0:
             num = None
-            print("[!] Number must be positive integer")
+            print("[!] Number must be a positive integer")
     
     print("Show more info? [YyNn]")
 

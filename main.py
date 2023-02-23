@@ -646,13 +646,16 @@ class Loading(IContext):
     def execute(self):
         loading_anim = Animation(loading.anim_data, 100, 13)
         tips = [
-            ("You can use PyPy to speed up the calculations; "
-             "even for multiprocessing it should be fully functional"),
-            "It all started as a hopeless attempt",
-            "To be honest, this loading screen was made just for fun. It has no sense",
-            "Trizen is a great man!"
-            ":>",
-            "I hope anybody will see these messages"
+            ("You can use PyPy to speed up the calculations;"
+             "even for multiprocessing it should be fully functional."),
+            "This `main` script can be used to access every part of the project.",
+            ("`help` menu can be used to get more information about how iterative method works "
+             "and check if specific numbers are near power numbers."),
+            "Currently dumps are only available for the multiprocessing iterative method.",
+            ("You can use `config` menu to edit configuration files for iterative and direct methods;"
+             "however they can be edited with any notepad, etc."),
+            "You can use `dump` command to list all available dumps and collect them.",
+            "`Exhaust search` and `S-func` methods are called direct search methods."
         ]
         Cur.to(Scr.maxy() - 1, 0)
         writef(f"> {choice(tips)}", Grey)

@@ -19,7 +19,7 @@ except ImportError:
     print("`more-itertools` module is required and not found")
     print("< pip install more-itertools`")
     input("> Press Enter to exit...")
-    sleep(1)
+    exit()
 
 from Common import linify
 from Common.DontInterrupt import DontInterrupt
@@ -181,6 +181,8 @@ class GUI_Process_Manager(tk.Tk):
         
         if confirmation:
             self.stop_btn["state"] = tk.DISABLED
+            self.resume_btn["state"] = tk.DISABLED
+            self.pause_btn["state"] = tk.DISABLED
             for worker in self.workers:
                 worker.resume()
                 worker.stop()
@@ -210,8 +212,9 @@ class GUI_Process_Manager(tk.Tk):
             label = self.process_time_label_list[worker_id]
             then = self.process_time[worker_id]
             label.config(text=get_hms(dt.now() - then))
-                        
-        self.time_label.config(text=get_hms(dt.now() - self.start_time))
+        
+        if len(self.workers_alive_id) != 0:   
+            self.time_label.config(text=get_hms(dt.now() - self.start_time))
 
         self.updater_id = self.after(self.update_interval, self.TH_update)
 
@@ -286,6 +289,7 @@ class Worker(mp.Process):
         self.paused_event = mp.Event()
         self.stopped_event = mp.Event()
         self.resumed_event = mp.Event()
+        self.exit_event = mp.Event()
         self.disconnected_event = mp.Event()
         
         self.error_occurred = mp.Event()
@@ -308,7 +312,7 @@ class Worker(mp.Process):
             while not self.tasks.empty():
                 self._process_task(self.tasks.get())
                 self.num_tasks_done += 1
-                self.sync_completed()
+                self.sync_tasks_chunks()
                 
         except Exception as e:
             self.error_occurred.set()
@@ -318,6 +322,7 @@ class Worker(mp.Process):
             self.sync_log(f"{self.name:<8} [len:{self.curr_num_len} exp:{self.curr_exp}] Error: {e}")
             self.send_msg(MsgType.WORKER_EXIT, msg=self.id)
             self.time_log_queue.put(f"[{get_now()}] {self.name}(@{self.id}) Error")
+            self.exit_event.set()
             raise e
         
         except KeyboardInterrupt:
@@ -326,6 +331,7 @@ class Worker(mp.Process):
             self.sync_log(f"{self.name:<8} Stopped")
             self.send_msg(MsgType.WORKER_EXIT, msg=self.id)
             self.time_log_queue.put(f"[{get_now()}] {self.name}(@{self.id}) Stopped")
+            self.exit_event.set()
             exit()
             
         else:
@@ -333,6 +339,7 @@ class Worker(mp.Process):
             self.sync_log(f"{self.name:<8} No tasks available. Finished")
             self.send_msg(MsgType.WORKER_EXIT, msg=self.id)
             self.time_log_queue.put(f"[{get_now()}] {self.name}(@{self.id}) Finished")
+            self.exit_event.set()
         
     def _process_task(self, task: "Task"):        
         num_len, exponent = task.num_len, task.exponent
@@ -371,7 +378,7 @@ class Worker(mp.Process):
             self._process_chunk(chunk, exponent)
             
             self.num_chunks_done += 1
-            self.sync_completed()
+            self.sync_tasks_chunks()
                     
             if self.stopped_event.is_set():
                 # reroute to try-catch block inside run()
@@ -446,7 +453,7 @@ class Worker(mp.Process):
         self.state = status
         self.send_msg(MsgType.WORKER_STATUS, {"name": self.name, "id": self.id, "status": self.state})
             
-    def sync_completed(self):
+    def sync_tasks_chunks(self):
         self.send_msg(MsgType.WORKER_NUM_CHUNKS_TASKS, {"id": self.id, "tasks": self.num_tasks_done, "chunks": self.num_chunks_done})
         
     def sync_current_task(self):
@@ -494,12 +501,15 @@ def main():
     start_date_string = get_now()
         
     msg_queue = mp.Queue()
-    
     task_queue = mp.Queue()
     result_queue = mp.Queue()
     time_log_queue = mp.Queue()
     
     task_queue.cancel_join_thread()
+    msg_queue.cancel_join_thread()
+    result_queue.cancel_join_thread()
+    time_log_queue.cancel_join_thread()
+    
     for task in get_tasks(MIN_DIGITS, MAX_DIGITS, LEXPL, UEXPL):
         task_queue.put(task)
         
@@ -525,8 +535,14 @@ def main():
             else:
                 [worker.disconnect() for worker in workers]
                 
-            [worker.join() for worker in workers]
-
+            # using .join() or .is_alive() to wait for all workers to finish 
+            # is impossibe due to it will create a deadlock situation
+            # using manually created event instead
+            any_alive = True
+            while any_alive:
+                any_alive = not all([worker.exit_event.is_set() for worker in workers])
+                sleep(1)
+                
             error_occured = any([worker.error_occurred.is_set() for worker in workers])
             was_interrupted = any([worker.intrrupted.is_set() for worker in workers])
             
@@ -541,6 +557,8 @@ def main():
                 
             while not time_log_queue.empty():
                 time_log.append(time_log_queue.get())
+                
+            [worker.join() for worker in workers]
                 
     print(f"#{'END':-^{WIDTH}}#")
 

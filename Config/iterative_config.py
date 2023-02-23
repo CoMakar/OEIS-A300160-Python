@@ -52,7 +52,7 @@ try:
     assert MIN_DIGITS - LOWER_EXP_LIMIT >= 0,               "Increase const.MIN_DIGITS or decrease const.LOWER_EXP_LIMIT"
     assert PROCESSES >= 1,                                  "const.PROCESSES must be  at least 1"
     assert type(USE_GUI) == bool,                           "const.USE_GUI must be a boolean"
-    assert CHUNK_SIZE >= 1024,                              "const.CHUNK_SIZE must be greater than 1024"
+    assert CHUNK_SIZE >= 1024,                              "const.CHUNK_SIZE must be at least 1024"
 
 except AssertionError as e:
     print(f"Config validation failed: ITERATIVE > {e}")

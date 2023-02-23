@@ -50,6 +50,7 @@ class Msg:
     body: Any
 #!SECTION
 
+
 #SECTION - GUI Class
 #---------------------------------------------------------------------------------------------------
 #                                          GUI Class
@@ -181,6 +182,7 @@ class GUI_Process_Manager(tk.Tk):
         if confirmation:
             self.stop_btn["state"] = tk.DISABLED
             for worker in self.workers:
+                worker.resume()
                 worker.stop()
              
     #---------------------------------------------------------------------------
@@ -268,7 +270,7 @@ class WorkerStates(Enum):
 class Worker(mp.Process):    
     def __init__(self, worker_id, worker_name: str, 
                  task_queue: mp.Queue, result_queue: mp.Queue, 
-                 time_queue: mp.Queue, msg_queue: mp.Queue):
+                 time_log_queue: mp.Queue, msg_queue: mp.Queue):
         self.CHUNK_SIZE = iterative_config.CHUNK_SIZE
         mp.Process.__init__(self)
         self.name = worker_name
@@ -277,7 +279,7 @@ class Worker(mp.Process):
         self.tasks = task_queue
         self.results = result_queue
         
-        self.time_queue = time_queue
+        self.time_log_queue = time_log_queue
         
         self.msg_queue = msg_queue
         
@@ -310,11 +312,12 @@ class Worker(mp.Process):
                 
         except Exception as e:
             self.error_occurred.set()
-            self.error_string.put(f"num_len:{self.curr_num_len} exp:{self.curr_exp} -> {str(e)}")
+            self.error_string.put(f"[len:{self.curr_num_len} exp:{self.curr_exp}] -> {str(e)}")
             self.sync_status(WorkerStates.ERROR)
             sleep(random() * 3.141)
-            self.sync_log(f"{self.name:<8} While processing len:{self.curr_num_len} exp:{self.curr_exp} Error: {e}")
+            self.sync_log(f"{self.name:<8} [len:{self.curr_num_len} exp:{self.curr_exp}] Error: {e}")
             self.send_msg(MsgType.WORKER_EXIT, msg=self.id)
+            self.time_log_queue.put(f"[{get_now()}] {self.name}(@{self.id}) Error")
             raise e
         
         except KeyboardInterrupt:
@@ -322,12 +325,14 @@ class Worker(mp.Process):
             self.sync_status(WorkerStates.STOPPED)
             self.sync_log(f"{self.name:<8} Stopped")
             self.send_msg(MsgType.WORKER_EXIT, msg=self.id)
+            self.time_log_queue.put(f"[{get_now()}] {self.name}(@{self.id}) Stopped")
             exit()
             
         else:
             self.sync_status(WorkerStates.FINISHED)
-            self.sync_log(f"{self.name:<8} No tasks available. Processing finished")
+            self.sync_log(f"{self.name:<8} No tasks available. Finished")
             self.send_msg(MsgType.WORKER_EXIT, msg=self.id)
+            self.time_log_queue.put(f"[{get_now()}] {self.name}(@{self.id}) Finished")
         
     def _process_task(self, task: "Task"):        
         num_len, exponent = task.num_len, task.exponent
@@ -338,9 +343,11 @@ class Worker(mp.Process):
         self.sync_current_task()
             
         timer = Timer()
+        pause_timer = Timer()
+        total_downtime = 0
         timer.tic()
                    
-        self.sync_log(f"{self.name:<8} len={num_len:<4} exp={exponent:<4} in processing...")
+        self.sync_log(f"{self.name:<8} [len={num_len:<4} exp={exponent:<4}] Processing...")
         
         chunks = miter.chunked(pairs_to_check, self.CHUNK_SIZE)
         for chunk in chunks:
@@ -352,26 +359,34 @@ class Worker(mp.Process):
                 self.disconnected_event.clear()
             
             if self.paused_event.is_set():
-                pause_timer = Timer()
                 pause_timer.tic()
-                # block untio resumed_event is set
+                # block until resumed_event is set
                 self.wait_for_resume()
-                paused_for = get_hms(Timer.sec_to_timedelta(pause_timer.toc()))
-                self.time_queue.put(f"{self.name}(@{self.id}) len={num_len:} exp={exponent} -> was paused for {paused_for}")
-                    
-            if self.stopped_event.is_set():
-                # reroute to try-catch block inside run()
-                raise KeyboardInterrupt
+                paused_time_sec = pause_timer.toc()
+                total_downtime += paused_time_sec
+                paused_hms = get_hms(Timer.sec_to_timedelta(paused_time_sec))
+                self.sync_log(f"{self.name:<8} [len={num_len:<4} exp={exponent:<4}] Was paused for: {paused_hms}")
+                self.time_log_queue.put(f"[{get_now()}] {self.name}(@{self.id}) [len={num_len} exp={exponent}] || paused: {paused_hms}")
                     
             self._process_chunk(chunk, exponent)
             
             self.num_chunks_done += 1
             self.sync_completed()
+                    
+            if self.stopped_event.is_set():
+                # reroute to try-catch block inside run()
+                raise KeyboardInterrupt
 
         else:
-            elapsed = get_hms(Timer.sec_to_timedelta(timer.toc()))
-            self.sync_log(f"{self.name:<8} len={num_len:<4} exp={exponent:<4} elapsed {elapsed}")
-            self.time_queue.put(f"{self.name}(@{self.id}) len={num_len:} exp={exponent} -> {elapsed} sec")
+            elapsed_time_sec = timer.toc()
+            elapsed_hms = get_hms(Timer.sec_to_timedelta(elapsed_time_sec))
+            self.sync_log(f"{self.name:<8} [len={num_len:<4} exp={exponent:<4}] Elapsed: {elapsed_hms}")
+            self.time_log_queue.put(f"[{get_now()}] {self.name}(@{self.id}) [len={num_len} exp={exponent}] == elapsed: {elapsed_hms}")
+            if total_downtime != 0:
+                cpu_time_sec = elapsed_time_sec - total_downtime
+                cpu_hms = get_hms(Timer.sec_to_timedelta(cpu_time_sec))
+                self.sync_log(f"{self.name:<8} [len={num_len:<4} exp={exponent:<4}] CPU time: {cpu_hms}")
+                self.time_log_queue.put(f"[{get_now()}] {self.name}(@{self.id}) [len={num_len} exp={exponent}] ~~ CPU time: {cpu_hms}")
         
     def _process_chunk(self, chunk: Iterable["Task"], exponent: int):
         np_nums = []
@@ -482,13 +497,13 @@ def main():
     
     task_queue = mp.Queue()
     result_queue = mp.Queue()
-    time_consumption_queue = mp.Queue()
+    time_log_queue = mp.Queue()
     
     task_queue.cancel_join_thread()
     for task in get_tasks(MIN_DIGITS, MAX_DIGITS, LEXPL, UEXPL):
         task_queue.put(task)
         
-    workers = [Worker(id, f"proc_{id+1}", task_queue, result_queue, time_consumption_queue, msg_queue) for id in range(0, NPRC)]
+    workers = [Worker(id, f"proc_{id+1}", task_queue, result_queue, time_log_queue, msg_queue) for id in range(0, NPRC)]
     if USE_GUI:
         gui = GUI_Process_Manager(msg_queue, workers)
     
@@ -497,7 +512,7 @@ def main():
     whois_interrupted: List[Worker] = []
     whois_errored: List[Worker] = []
     results = []
-    time_consumptions = []
+    time_log = []
     
     
     print(f"#{'START':-^{WIDTH}}#")    
@@ -524,8 +539,8 @@ def main():
             while not result_queue.empty():
                 results.extend(result_queue.get())
                 
-            while not time_consumption_queue.empty():
-                time_consumptions.append(time_consumption_queue.get())
+            while not time_log_queue.empty():
+                time_log.append(time_log_queue.get())
                 
     print(f"#{'END':-^{WIDTH}}#")
 
@@ -572,12 +587,12 @@ def main():
             "start date":                       start_date_string,
             "end date":                         end_date_string,
             "elapsed":                          get_hms(elapsed),
-            "details":                          time_consumptions
+            "log":                              time_log
         },
         "numbers info": {
             "numbers":                          valid_numbers,
-            "quantity of valid numbers":        len(valid_numbers),
-            "longest number length":            longest_num_len,
+            "quantity of valid integers":       len(valid_numbers),
+            "longest integer length":           longest_num_len,
             "sum value":                        sum_value,
             "extra validation passed":          False not in extra_validation_results,
         },

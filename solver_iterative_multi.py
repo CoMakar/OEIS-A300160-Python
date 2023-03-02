@@ -1,5 +1,6 @@
 import json
 import multiprocessing as mp
+import threading as th
 import tkinter as tk
 import tkinter.messagebox as tk_MsgBox
 import tkinter.scrolledtext as tk_ScrolledText
@@ -22,7 +23,7 @@ except ImportError:
     exit()
 
 from Common import linify
-from Common.DontInterrupt import DontInterrupt
+from Common.DontInterrupt import DontInterrupt, dont_interrupt
 from Common.Printer import Printer
 from Common.str_utils import log, flog, get_hms, get_now
 from Common.Timer import Timer
@@ -32,6 +33,15 @@ from Iterative.near_power import get_data_sample
 
 
 APP = path.dirname(__file__)
+UPDATE_INTERVAL_MS = 100
+
+
+#SECTION - Repetitive action
+class Repeat(th.Timer):
+    def run(self):
+        while not self.finished.wait(self.interval):
+            self.function(*self.args, **self.kwargs)
+#!SECTION
 
 
 #SECTION - Synchronization message
@@ -58,7 +68,7 @@ class Msg:
 class GUI_Process_Manager(tk.Tk):
     def __init__(self, msg_queue: mp.Queue, workers: List["Worker"]):
         # interval between each GUI update event in ms
-        self.update_interval = 100
+        self.update_interval = UPDATE_INTERVAL_MS
         tk.Tk.__init__(self)
         self.workers = workers
         self.msg_queue = msg_queue
@@ -156,9 +166,6 @@ class GUI_Process_Manager(tk.Tk):
         self.after_cancel(self.updater_id)
         # unpuase all workers
         [w.resume() for w in self.workers]
-        # disconnect processes from GUI thread
-        # so processes will no be blocked
-        [w.disconnect() for w in self.workers]
         self.destroy()
 
     #---------------------------------------------------------------------------
@@ -184,8 +191,8 @@ class GUI_Process_Manager(tk.Tk):
             self.resume_btn["state"] = tk.DISABLED
             self.pause_btn["state"] = tk.DISABLED
             for worker in self.workers:
-                worker.resume()
                 worker.stop()
+                worker.resume()
              
     #---------------------------------------------------------------------------
     #                            Update events
@@ -229,9 +236,12 @@ class GUI_Process_Manager(tk.Tk):
         elif status == WorkerStates.ERROR:
             bg = "#fa78e6"
             fg = "#4a0d41"    
-        elif status in (WorkerStates.STOPPED, WorkerStates.FINISHED):
+        elif status == WorkerStates.STOPPED:
             bg = "#e37676"
             fg = "#690808"
+        elif status ==  WorkerStates.FINISHED:
+            bg = "#a7d1d0"
+            fg = "#154544"
             
         self.status_label_list[id].config(text=f"{name}(@{id}) status: {status.value}", background=bg, foreground=fg)
  
@@ -305,8 +315,12 @@ class Worker(mp.Process):
         
         self.state = None
         self.sync_status(WorkerStates.RUNNING)
-    
+        
     def run(self):
+        sync_dispatcher = Repeat(UPDATE_INTERVAL_MS/1000, self.dispatch)
+        sync_dispatcher.daemon = True
+        sync_dispatcher.start()
+        
         try:
             # while any tasks available
             while not self.tasks.empty():
@@ -318,28 +332,31 @@ class Worker(mp.Process):
             self.error_occurred.set()
             self.error_string.put(f"[len:{self.curr_num_len} exp:{self.curr_exp}] -> {str(e)}")
             self.sync_status(WorkerStates.ERROR)
-            sleep(random() * 3.141)
             self.sync_log(f"{self.name:<8} [len:{self.curr_num_len} exp:{self.curr_exp}] Error: {e}")
-            self.send_msg(MsgType.WORKER_EXIT, msg=self.id)
             self.time_log_queue.put(f"[{get_now()}] {self.name}(@{self.id}) Error")
-            self.exit_event.set()
+            sleep(random() * 3.141)
             raise e
         
         except KeyboardInterrupt:
             self.intrrupted.set()
             self.sync_status(WorkerStates.STOPPED)
             self.sync_log(f"{self.name:<8} Stopped")
-            self.send_msg(MsgType.WORKER_EXIT, msg=self.id)
             self.time_log_queue.put(f"[{get_now()}] {self.name}(@{self.id}) Stopped")
-            self.exit_event.set()
-            exit()
             
         else:
             self.sync_status(WorkerStates.FINISHED)
             self.sync_log(f"{self.name:<8} No tasks available. Finished")
-            self.send_msg(MsgType.WORKER_EXIT, msg=self.id)
             self.time_log_queue.put(f"[{get_now()}] {self.name}(@{self.id}) Finished")
+
+        finally:
+            self.send_msg(MsgType.WORKER_EXIT, msg=self.id)
             self.exit_event.set()
+            # Give GUI some time to get all messages
+            # UPDATE_INTERVAL_SEC = UPDATE_INTERVAL_MS / 1000 => (1.5 * UPDATE_INTERVAL_SEC) => UPDATE_INTERVAL_MS / 666
+            with DontInterrupt():
+                sleep(UPDATE_INTERVAL_MS / 666)
+            self.disconnect()
+            
         
     def _process_task(self, task: "Task"):        
         num_len, exponent = task.num_len, task.exponent
@@ -358,13 +375,7 @@ class Worker(mp.Process):
         
         chunks = miter.chunked(pairs_to_check, self.CHUNK_SIZE)
         for chunk in chunks:
-            # check for any events before processing chunk
-            if self.disconnected_event.is_set():
-                # this will prevent process from blocking
-                # if msg_queue consumber (aka GUI) is already destroyed
-                self.msg_queue.cancel_join_thread()
-                self.disconnected_event.clear()
-            
+            # check for any events before processing a chunk
             if self.paused_event.is_set():
                 pause_timer.tic()
                 # block until resumed_event is set
@@ -374,16 +385,15 @@ class Worker(mp.Process):
                 paused_hms = get_hms(Timer.sec_to_timedelta(paused_time_sec))
                 self.sync_log(f"{self.name:<8} [len={num_len:<4} exp={exponent:<4}] Was paused for: {paused_hms}")
                 self.time_log_queue.put(f"[{get_now()}] {self.name}(@{self.id}) [len={num_len} exp={exponent}] || paused: {paused_hms}")
-                    
-            self._process_chunk(chunk, exponent)
-            
-            self.num_chunks_done += 1
-            self.sync_tasks_chunks()
-                    
+                
             if self.stopped_event.is_set():
                 # reroute to try-catch block inside run()
                 raise KeyboardInterrupt
-
+ 
+            self._process_chunk(chunk, exponent)
+            
+            self.num_chunks_done += 1
+                    
         else:
             elapsed_time_sec = timer.toc()
             elapsed_hms = get_hms(Timer.sec_to_timedelta(elapsed_time_sec))
@@ -428,11 +438,6 @@ class Worker(mp.Process):
         # event handline should be done inside run()
         self.paused_event.clear()
         self.resumed_event.set()
-        
-    def disconnect(self):
-        # only event cab be set from outside
-        # event handline should be done inside run()
-        self.disconnected_event.set()
             
     def stop(self):
         # only event cab be set from outside
@@ -440,8 +445,19 @@ class Worker(mp.Process):
         self.stopped_event.set()
         
     #------------------------------------------------
+    #                disconnect
+    #------------------------------------------------    
+    def disconnect(self):
+        # this will prevent process from blocking
+        # if msg_queue consumer (aka GUI) is already destroyed
+        self.msg_queue.cancel_join_thread()
+    
+    #------------------------------------------------
     #                send info to GUI
     #------------------------------------------------
+    def dispatch(self):
+        self.sync_tasks_chunks()
+    
     def send_msg(self, msg_type: MsgType, msg: any):
         self.msg_queue.put(Msg(msg_type, msg))
              
@@ -482,6 +498,7 @@ def get_tasks(min_digits: int, max_digits: int,
 #------------------------------------------------
 #                MAIN
 #------------------------------------------------
+@dont_interrupt
 def main():
     MIN_DIGITS      = iterative_config.MIN_DIGITS
     MAX_DIGITS      = iterative_config.MAX_DIGITS
@@ -489,6 +506,7 @@ def main():
     LEXPL           = iterative_config.LOWER_EXP_LIMIT   
     NPRC            = iterative_config.PROCESSES
     USE_GUI         = iterative_config.USE_GUI
+    CHUNK_SIZE      = iterative_config.CHUNK_SIZE
     WIDTH           = get_terminal_size().columns // 2
     
     
@@ -527,38 +545,37 @@ def main():
     
     print(f"#{'START':-^{WIDTH}}#")    
     with Timer("MAIN"):
-        with DontInterrupt():
-            [worker.start() for worker in workers]
+        [worker.start() for worker in workers]
+        
+        if USE_GUI:
+            gui.start()
+        else:
+            [worker.disconnect() for worker in workers]
             
-            if USE_GUI:
-                gui.start()
-            else:
-                [worker.disconnect() for worker in workers]
-                
-            # using .join() or .is_alive() to wait for all workers to finish 
-            # is impossibe due to it will create a deadlock situation
-            # using manually created event instead
-            any_alive = True
-            while any_alive:
-                any_alive = not all([worker.exit_event.is_set() for worker in workers])
-                sleep(1)
-                
-            error_occured = any([worker.error_occurred.is_set() for worker in workers])
-            was_interrupted = any([worker.intrrupted.is_set() for worker in workers])
+        # using .join() or .is_alive() to wait for all workers to finish 
+        # is impossibe due to it will create a deadlock situation
+        # using manually created event instead
+        any_alive = True
+        while any_alive:
+            any_alive = not all([worker.exit_event.is_set() for worker in workers])
+            sleep(1)
             
-            for worker in workers:
-                if worker.intrrupted.is_set():
-                    whois_interrupted.append(worker)
-                if worker.error_occurred.is_set():
-                    whois_errored.append(worker)
-                    
-            while not result_queue.empty():
-                results.extend(result_queue.get())
+        error_occured = any([worker.error_occurred.is_set() for worker in workers])
+        was_interrupted = any([worker.intrrupted.is_set() for worker in workers])
+        
+        for worker in workers:
+            if worker.intrrupted.is_set():
+                whois_interrupted.append(worker)
+            if worker.error_occurred.is_set():
+                whois_errored.append(worker)
                 
-            while not time_log_queue.empty():
-                time_log.append(time_log_queue.get())
-                
-            [worker.join() for worker in workers]
+        while not result_queue.empty():
+            results.extend(result_queue.get())
+            
+        while not time_log_queue.empty():
+            time_log.append(time_log_queue.get())
+            
+        [worker.join() for worker in workers]
                 
     print(f"#{'END':-^{WIDTH}}#")
 
@@ -597,9 +614,10 @@ def main():
         "config": {
             "min digits":                       MIN_DIGITS,
             "max digits":                       MAX_DIGITS,
-            "number of processes":              NPRC,
             "upper exponent limit":             UEXPL,
             "lower exponent limit":             LEXPL,
+            "number of processes":              NPRC,
+            "chunk size":                       CHUNK_SIZE
         },
         "time info": {
             "start date":                       start_date_string,
@@ -646,5 +664,5 @@ def main():
 
 
 if __name__ == "__main__":
-    mp.set_start_method("spawn")
+    mp.set_start_method("spawn")    
     main()
